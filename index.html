@@ -1,0 +1,124 @@
+<html>
+  <head>
+    <script id="shader-fs" type="x-shader/x-fragment">
+      precision highp float;
+      const float PI = 3.14159265359;
+      uniform float uTime;
+      uniform vec2 uResolution;
+      void main(){
+        vec2 position = gl_FragCoord.xy / uResolution.xy;
+        float wave =
+        fract(1000.0 *sin(16. * PI * (150. * position.x + 1500.* position.y)));
+        wave = wave + 1.;
+        wave = wave / 2.;
+        gl_FragColor = vec4(vec3(wave), 1.0);
+        //gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+      }
+    </script>
+
+    <script id="shader-vs" type="x-shader/x-vertex">
+      attribute vec3 aVertexPosition;
+      void main(){
+        gl_Position = vec4(aVertexPosition, 1.0);
+      }
+    </script>
+
+    <script>
+    var canvas, gl;
+    var vertexPositionLocation;
+    var resolutionLocation, resolution;
+    var timeLocation, time;
+    var startTime;
+    var vertices = [
+      -1.0,  -1.0,
+       1.0,  -1.0,
+      -1.0,   1.0,
+
+      -1.0,   1.0,
+       1.0,  -1.0,
+       1.0,   1.0,
+    ];
+
+
+    function resize(){
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    function compileShader(shaderSource, shaderType){
+      var shader = gl.createShader(shaderType);
+      gl.shaderSource(shader, shaderSource);
+      gl.compileShader(shader);
+      return shader;
+    }
+
+    function drawScene(){
+      gl.uniform1f(timeLocation, time);
+      gl.uniform2fv(resolutionLocation, resolution);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+    function render(){
+      requestAnimationFrame(render);
+      resolution = [canvas.width, canvas.height];
+      time = (Date.now() - startTime) / 1000;
+      drawScene();
+    }
+
+    function getShader(id){
+      var shaderScript = document.getElementById(id);
+      var shaderSource = "";
+      var textLine = shaderScript.firstChild;
+      while (textLine) {
+        if(textLine.nodeType == 3)
+          shaderSource+= textLine.textContent;
+        textLine = textLine.nextSibling;
+      }
+        var shader;
+        if(shaderScript.type == "x-shader/x-fragment")
+          shader = compileShader(shaderSource, gl.FRAGMENT_SHADER);
+        else if(shaderScript.type == "x-shader/x-vertex")
+          shader = compileShader(shaderSource, gl.VERTEX_SHADER);
+        else
+          return null;
+        return shader;
+    }
+    function bootstrap(){
+      canvas = document.getElementById("holder");
+      gl = canvas.getContext("experimental-webgl");
+      window.addEventListener("resize", resize);
+      resize();
+      var fragmentShader = getShader("shader-fs");
+      var vertexShader = getShader("shader-vs");
+
+      var shaderProgram = gl.createProgram();
+      gl.attachShader(shaderProgram, vertexShader);
+      gl.attachShader(shaderProgram, fragmentShader);
+      gl.linkProgram(shaderProgram);
+      gl.useProgram(shaderProgram);
+
+      gl.deleteShader(fragmentShader);
+      gl.deleteShader(vertexShader);
+
+      resolutionLocation = gl.getUniformLocation(shaderProgram, "uResolution");
+      timeLocation = gl.getUniformLocation(shaderProgram, "uTime");
+
+
+      vertexPositionLocation = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+      var buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(vertexPositionLocation);
+      gl.vertexAttribPointer(vertexPositionLocation, 2, gl.FLOAT, false, 0, 0);
+      startTime = Date.now();
+      render();
+    }
+
+
+    </script>
+
+  </head>
+  <body onload="bootstrap();">
+    <canvas id="holder"style="width:100%; height:100%;"></canvas>
+  </body>
+</html>
